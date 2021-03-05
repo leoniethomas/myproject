@@ -14,91 +14,116 @@ library(tidyverse)
 library(openintro)
 library(broom)
 library(corrplot)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(knitr)
+library(plotly)
 ```
+
+## The tasks based on exercises from Reka:
+
+```{r setuppath}
+getwd()
+setwd("/home/lthomas/Documents/Studium/Master/Seminare/Bioinfo_Seminare/R_course/")
+repository_name <- "myproject"
+```
+
+__1.__ Create a workflowr project
+
+```{r, eval = FALSE}
+library("workflowr")
+wflow_start(repository_name)
+setwd(paste0("/home/lthomas/Documents/Studium/Master/Seminare/Bioinfo_Seminare/R_course/", repository_name,"/"))
+```
+
+__2.__ Set it up so it works with github. 
+
+```{r, eval = FALSE}
+wflow_git_config(user.name = "leoniethomas", user.email = "leonie.thomas@stud.uni-heidelberg.de", overwrite = TRUE)
+wflow_use_github(username = "leoniethomas", repository = repository_name, create_on_github = T)
+```
+
+__3.__ Create a Markdown file in the analyis folder and solve the exercises from Rajbir. 
+
+```{r, eval = FALSE}
+wflow_open("analysis/assignment.Rmd")
+```
+
+__4.__ Add the following code to the end of the Rmd file and set `eval=TRUE` (see the code in the assignment.Rmd file):
+
+```{r, echo = FALSE, out.width = "70%", eval=FALSE}
+knitr::include_graphics("https://github.com/allisonhorst/stats-illustrations/blob/master/rstats-artwork/code_hero.jpg?raw=true", dpi = 100)
+```
+
+
+__4.__ Publish and push the file to github. 
+
+```{r, eval= FALSE}
+#wflow_build()
+#wflow_view()
+wflow_status()
+wflow_publish(c("analysis/index.Rmd", "analysis/about.Rmd", "analysis/license.Rmd", "analysis/assignment.Rmd"),
+              "Publish the initial files for myproject")
+wflow_git_push()
+```
+
+__5.__ Set up the github pages with the repository. 
+
+```{r, eval = FALSE}
+system(paste0("firefox https://github.com/leoniethomas/", repository_name, "/settings"))
+# Github pages -> Source = master & folder = /docs -> Save 
+```
+
+__6.__ As the result of the assignment, send us the link of your webpage: 
+
+```{eval = FALSE}
+system(paste0("firefox https://leoniethomas.github.io/", repository_name, "/"))
+```
+
 
 
 
 ## Based on the exercises from Rajbir: [here](https://github.com/CompEpigen/BasicR/blob/master/markdown/Day3_3_MulitivariableRegression_Exercise.Rmd)
 
-1. Fit a new model that uses  `pf_expression_control` to predict `hf_score`, or the total human freedom score. Using the estimates from the R output, write the equation of the regression line. What does the slope tell us in the context of the relationship between human freedom and the amount of political pressure on media content?
 
-__Preparing the dataset:__ 
+```{r, echo = FALSE, include = FALSE}
+### Exercises linear regression
 
-Selecting just one year, since the values from the same country but different years are not independent from each other. 
-
-```{r}
+# Selecting just one year, since the values from the same country but different years are not independent from each other. 
 hfi_2016 <- hfi %>% 
   filter(year == 2016)
-```
 
-__Linear Regression:__
-
-$$ hf\_score = a + b * pf\_expression\_control$$
-
-```{r}
-hfi_2016 %>%
-  summarise(cor(pf_expression_control, hf_score))
+#1. lm hf_score = a + b * pf_expression_control
 m1 <- lm(hf_score ~ pf_expression_control, data = hfi_2016)
 tidy(m1)
 glance(m1)
-ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE)
 m1_aug <- augment(m1)
-ggplot(data = m1_aug, aes(x = .fitted, y = .resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("Residuals")
 
-ggplot(data = m1_aug, aes(x = .resid)) +
-  geom_histogram(binwidth = 0.25) +
-  xlab("Residuals")
+# hf_score =  5.053396 + 0.368432 * pf_expression_control
+# tells us that for every unit of increase in pf_expression_control the hf_score increases by 0.368432
 
-ggplot(data = m1_aug, aes(x = .fitted, y = .std.resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("SD Residuals")
-```
+# 2. If someone saw the least squares regression line and not the actual data, how would they predict a country's `hf_score` for one with a 3 rating for `pf_expression_control`? Is this an overestimate or an underestimate, and by how much? In other words, what is the residual for this prediction?
 
-$$ hf\_score =  5.053396 + 0.368432 * pf\_expression\_control$$
-
-
-
-2. If someone saw the least squares regression line and not the actual data, how would they predict a country's `hf_score` for one with a 3 rating for `pf_expression_control`? Is this an overestimate or an underestimate, and by how much? In other words, what is the residual for this prediction?
-
-```{r}
 tidy(m1) %>% filter(term == "(Intercept)") %>% pull(estimate) + tidy(m1) %>% filter(term == "pf_expression_control") %>% pull(estimate) * 3
 m1_aug %>% filter(pf_expression_control == 3) %>% pull(.resid)
 
-```
 
-3. How does this relationship compare to the relationship between `pf_score` and `pf_expression_control`?
-    Use the $R^2$ values from the two model summaries to compare.
-    Does your `pf_expression_control` seem to predict `hf_score` better?
-    Why or why not?
-    
-```{r}
+# 3. pf_score = a + b * pf_experssion_control
 hfi_2016 %>%
   summarise(cor(pf_expression_control, pf_score))
 m2 <- lm(pf_score ~ pf_expression_control, data = hfi_2016)
 tidy(m2)
 glance(m2)
+# quantify prediction quality by comparing r.squared values
 
-```
-    
-```{r}
 glance(m1) %>% pull(r.squared)
 glance(m2) %>% pull(r.squared)
+glance(m1) %>% pull(r.squared) < glance(m2) %>% pull(r.squared)
+# second model predicts better because the r.squared value is higher
 
-```
-Since the `r.squared` value is lower for `pf_expression_control` ~ `hf_score`, `pf_expression_control` seems to be a better predictor for  `hf_score` than vor `pf_score`.
+# Check the model diagnostics using appropriate visualisations and evaluate if the model conditions have been met.
 
-
-4. Check the model diagnostics using appropriate visualisations and evaluate if the model conditions have been met.
-
-```{r}
 ggplot(data = hfi_2016, aes(x = pf_expression_control, y = pf_score)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
@@ -119,14 +144,10 @@ ggplot(data = m2_aug, aes(x = .fitted, y = .std.resid)) +
   xlab("Fitted values") +
   ylab("SD Residuals")
 
-```
+# Pick another pair of variables of interest and visualise the relationship between them.
+#    Do you find the relationship surprising or is it what you expected.
+#    Discuss why you were interested in these variables and why you were/were not surprised by the relationship you observed.
 
-
-5. Pick another pair of variables of interest and visualise the relationship between them.
-    Do you find the relationship surprising or is it what you expected.
-    Discuss why you were interested in these variables and why you were/were not surprised by the relationship you observed.
-    
-```{r}
 cor_hfi_2016 <- cor(hfi_2016 %>% select(-year, -ISO_code, -countries, -region)) 
 cor_hfi_2016 <- cor_hfi_2016[apply(cor_hfi_2016, 2, function(x){!(sum(is.na(x)) == nrow(cor_hfi_2016)-1)}), apply(cor_hfi_2016, 2, function(x){!(sum(is.na(x)) == nrow(cor_hfi_2016)-1)})]
 apply(cor_hfi_2016, 2, function(x){sum(x > 0.7)-1 != 0})
@@ -137,117 +158,301 @@ corrplot(cor_hfi_2016)
 ```
 
 
-7. Use the hfi dataset from the `openintro` package
+```{r, echo = FALSE, include = FALSE}
+### Exercises multiple Regression
 
-```{r}
 
+## 1. Copy your model from the previous exercise that uses  `pf_expression_control` to predict Human Freedom or `hf_score`. Using the `tidy` command, what does the slope tell us in the context of the relationship between human freedom and expression control in the country?
+Q1 <- m1
+tidy(Q1)
+glance(Q1)
+Q1_aug <- augment(Q1)
+
+# hf_score =  5.053396 + 0.368432 * pf_expression_control
+# tells us that for every unit of increase in pf_expression_control the hf_score increases by 0.368432
+
+
+##2. Add region to the model from Q1 using `lm(hf_score ~ pf_expression_control + region, data = hfi_2016)`. What do you notice about the slope between human freedom and expression control? How has it changed from the previous model. Do you think region is a confounder, and think about reasons why this might be so? 
+
+Q2 <- lm(hf_score ~ pf_expression_control + region, data = hfi_2016)
+tidy(Q2)
+glance(Q2)
+# hf_score ~   0.275 * pf_expression_control
+
+## 3Compare the $R^2$ for the 2 models from Q1 and Q2. Is there an increase by adding region? Think about the definition of $R^2$. What does this mean in this context?
+
+glance(Q1) %>% pull(r.squared) < glance(Q2) %>% pull(r.squared)
+
+# second model predicts better because the r.squared value is higher
+
+## 4. Fit a new model that uses  `ef_money` or monetary measure to predict `hf_score`.  What does the slope tell us in the context of the relationship between human freedom and the economy in the country? 
+
+
+Q4 <- lm(hf_score ~ ef_money, data = hfi_2016)
+tidy(Q4)
+glance(Q4)
+
+
+
+#5\. Again add region to the model from Q4. Compare the slope and $R^2$ with the model from Q4.
+
+Q5 <- lm(hf_score ~ ef_money + region, data = hfi_2016)
+tidy(Q5)
+glance(Q5)
+
+#6\. Finally fit a model with `ef_money` and `pf_expression_control` as exposures and `hf_score` as outcome.  Compare the slope and $R^2$ from the models from Q1. Could `ef_money` be a confounder? 
+
+Q6 <- lm(hf_score ~ ef_money + pf_expression_control, data = hfi_2016)
+tidy(Q6)
+glance(Q6)
+
+
+#7\. Use a linear regression model (and scatter plot) with  `ef_money` as exposure and `pf_expression_control` as outcome, to study whether `ef_money` has an association with `pf_expression_control` as well. This might validate our finding that `ef_money` is a confounder between  `pf_expression_control` as exposure and `hf_score` as outcome from Q6.
+
+Q7 <- lm(pf_expression_control ~ ef_money , data = hfi_2016)
+tidy(Q7)
+glance(Q7)
+
+```
+
+__7. Use the hfi dataset from the `openintro` package __
+
+```{r, dataset_loading, message= FALSE}
+library(openintro)
 data("hfi")
+# Selecting just one year, since the values from the same country but different years are not independent from each other. 
+hfi_2016 <- hfi %>% 
+  filter(year == 2016)
 ```
 
-8. == 1. Fit a new model that uses  `pf_expression_control` to predict `hf_score`, or the total human freedom score.
+__8.Fit a new model that uses  `pf_expression_control` to predict `hf_score`, or the total human freedom score.__
 
-```{r}
-tidy(m1)
-glance(m1)
-ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
+```{r, aufgabe_8, message= FALSE}
+#1. lm hf_score = a + b * pf_expression_control
+Q8 <- lm(hf_score ~ pf_expression_control, data = hfi_2016)
+```
+
+$$ \text{hf_score} = intercept + estimate * \text{pf_expression_control} $$
+
+
+```{r,echo = FALSE, message= FALSE}
+p1 <- ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
+                    geom_point() +
+                    geom_smooth(method = "lm", se = FALSE)
+p2 <- tableGrob(tidy(Q8) %>% select(-statistic))
+p3 <- tableGrob(glance(Q8) %>% select(r.squared, p.value, AIC, deviance))
+#p4 <- tableGrob(augment(Q8))
+
+Q8_aug <- augment(Q8)
+blank <- grid.rect(gp=gpar(col="white"))
+
+grid.arrange(grobs = list(blank,p1, blank,p3,p2), layout_matrix = rbind(c(1,2,2,2,3), c(1,2,2,2,3), c(1,2,2,2,3), c(1,2,2,2,3), c(1,2,2,2,3),c(4,4,4,4,4),c(5,5,5,5,5),c(5,5,5,5,5)))
+```
+
+__Fitted Model: __
+
+$$ \text{hf_score} = 5.053 + 0.368 * \text{pf_expression_control} $$
+
+__9. Again add region to the model from Q4. Compare the slope and $R^2$ with the model from Q4. __
+
+__Q4 model: __
+
+$$ \text{hf_score} = intercept + estimate * \text{ef_money} $$
+__Q9 model: __
+
+$$ \text{hf_score} = intercept + estimate_1 * \text{ef_money} + estimate_2 *  \text{region}$$
+
+```{r, aufgabe_9, message= FALSE}
+
+Q4 <- lm(hf_score ~ ef_money, data = hfi_2016)
+
+
+Q9 <- lm(hf_score ~  ef_money + region, data = hfi_2016)
+
+```
+
+
+```{r,echo = FALSE, message= FALSE}
+
+p1 <- ggplot(data = hfi_2016, aes(x = ef_money, y = hf_score)) +
+                    geom_point() +
+                    geom_smooth(method = "lm", se = FALSE)
+p3 <- tableGrob(glance(Q4) %>% select(r.squared, p.value, AIC, deviance))
+
+
+arrange_factors <- hfi_2016 %>% group_by(region) %>% summarise(med_hf_score = median(hf_score)) %>% arrange(med_hf_score) %>% pull(region)
+hfi_2016$region <- factor(hfi_2016$region, levels = arrange_factors)
+  
+p4 <- ggplot(data = hfi_2016, aes(x = region, y = hf_score)) +
+                    geom_point() +
+                    geom_boxplot() +
+                    theme(axis.text.x = element_text(angle = 90)) 
+                    #geom_smooth(method = "lm", se = FALSE)
+
+p2 <- kable(rbind.data.frame(tidy(Q4) %>% mutate(model = "q4"), tidy(Q9) %>% mutate(model = "q9")) %>% select(6, 1:5)%>% select(-statistic))
+p6 <- tableGrob(glance(Q9) %>% select(r.squared, p.value, AIC, deviance))
+
+
+
+#blank <- grid.rect(gp=gpar(col="white"))
+
+#grid.arrange(grobs = list(p1,p4), nrow = 1)
+#grid.arrange(grobs = list(p2,p5), nrow = 1)
+#grid.arrange(grobs = list(p3,p6), nrow = 1)
+
+```
+
+```{r,echo = FALSE, message= FALSE}
+grid.arrange(grobs = list(p1,p4), ncol = 2)
+```
+
+```{r,echo = FALSE, message= FALSE, results = 'asis'}
+p2
+
+```
+
+__Q4 model: __
+
+$$ \text{hf_score} = 2.737 + 0.5038764 * \text{ef_money} $$
+__Q9 model: __
+
+$$ \text{hf_score} = 3.5574922 + 0.3640628 * \text{ef_money} +  \sum \limits _{country} estimate_{country} *  1 $$
+
+
+```{r,echo = FALSE, message= FALSE}
+
+plot_statistics <- data.frame(value_model = c("estimate_q4", "r_squared_q4", "estimate_q9", "r_squared_q9"),
+                              num_value = c(tidy(Q4) %>% filter(term == "ef_money") %>% pull(estimate), glance(Q4) %>% pull(r.squared),
+                                            tidy(Q9) %>% filter(term == "ef_money") %>% pull(estimate),  glance(Q9) %>% pull(r.squared)), 
+                              value = c("estimate", "r_squared", "estimate", "r_squared"),
+                              model = c("q4", "q4", "q9", "q9"))
+
+p1 <- ggplot(data=plot_statistics %>% filter(value == "estimate"), aes(x=model, y=num_value)) +
+              geom_bar(stat="identity") + 
+              ylab("ef_money estimate") +
+              xlab(" ")
+    
+
+p2 <- ggplot(data=plot_statistics %>% filter(value == "r_squared"), aes(x=model, y=num_value)) +
+              geom_bar(stat="identity")+
+              ylab("r_squared")+
+              xlab(" ")
+
+grid.arrange(p1,p2, nrow = 1, bottom = "model", top = "Model comparison")
+
+```
+
+Since the r.squared value is increased for the Q9 Model, there seems to be a effect of region on the hf_score. 
+The effect of ef_money is for both models significant. 
+When looking at the regions, not all of them seem to have a significant effect on the hf_score, therefore a feature selection would be nice to perform on all the region features, to select for those useful for the model. 
+The effect magnitude (the slope) which a change in ef_money has on the hf_score decreases for the Q9 model. 
+
+
+__10. Finally fit a model with `ef_money` and `pf_expression_control` as exposures and `hf_score` as outcome.  Compare the slope and $R^2$ from the models from Q1. Could `ef_money` be a confounder? __
+
+__Q1 model: __
+
+$$ \text{hf_score} = intercept + estimate * \text{pf_expression_control} $$
+__Q10 model: __
+
+$$ \text{hf_score} = intercept + estimate_1 * \text{pf_expression_control} + estimate_2 * \text{ef_money}$$
+
+```{r, aufgabe_10, message= FALSE}
+
+Q10 <- lm(hf_score ~ pf_expression_control + ef_money, data = hfi_2016)
+
+Q1 <- lm(hf_score ~ pf_expression_control, data = hfi_2016)
+```
+
+```{r,echo = FALSE, message= FALSE, fig.align= 'center'}
+
+p2 <- tableGrob(tidy(Q10) %>% select(-statistic))
+p3 <- tableGrob(tidy(Q1) %>% select(-statistic))
+
+
+p16 <- ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
-m1_aug <- augment(m1)
-ggplot(data = m1_aug, aes(x = .fitted, y = .resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("Residuals")
 
-ggplot(data = m1_aug, aes(x = .resid)) +
-  geom_histogram(binwidth = 0.25) +
-  xlab("Residuals")
-
-ggplot(data = m1_aug, aes(x = .fitted, y = .std.resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("SD Residuals")
-```
-
-9. Again add region to the model from Q4. Compare the slope and $R^2$ with the model from Q4.
-
-__Q4 model:__
-
-```{r}
-
-```
-
-10. Finally fit a model with `ef_money` and `pf_expression_control` as exposures and `hf_score` as outcome.  Compare the slope and $R^2$ from the models from Q1. Could `ef_money` be a confounder? 
-
-```{r}
-hfi_2016 %>%
-  summarise(cor(pf_expression_control, hf_score))
-hfi_2016 %>%
-  summarise(cor(ef_money, hf_score))
-hfi_2016 %>%
-  summarise(cor(pf_expression_control, ef_money))
-
-m3 <- lm(hf_score ~ pf_expression_control + ef_money, data = hfi_2016)
-tidy(m3)
-glance(m3)
-ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
+p17 <- ggplot(data = hfi_2016, aes(x = ef_money, y = hf_score)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
-m3_aug <- augment(m3)
-ggplot(data = m3_aug, aes(x = .fitted, y = .resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("Residuals")
 
-ggplot(data = m3_aug, aes(x = .resid)) +
-  geom_histogram(binwidth = 0.25) +
-  xlab("Residuals")
+grid.arrange(p16, p17,p2, p3, layout_matrix = rbind(c(1, 2),c(1, 2), c(3,3), c(4,4)))
 
-ggplot(data = m3_aug, aes(x = .fitted, y = .std.resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("SD Residuals")
 ```
 
 
-11. Use a linear regression model (and scatter plot) with  `ef_money` as exposure and `pf_expression_control` as outcome, to study whether `ef_money` has an association with `pf_expression_control` as well. This might validate our finding that `ef_money` is a confounder between  `pf_expression_control` as exposure and 
-`hf_score` as outcome from Q6.
+```{r,echo = FALSE, message= FALSE, fig.width=5, fig.align= 'center'}
+
+cor_hfi_2016 <- cor(hfi_2016 %>% select(ef_money, pf_expression_control, hf_score)) 
+corrplot(cor_hfi_2016)
+
+```
 
 
 
-```{r}
+__Q1 model: __
 
-hfi_2016 %>% summarise(cor(pf_expression_control, ef_money))
+$$ \text{hf_score} = 5.053 + 0.368 * \text{pf_expression_control} $$
+__Q10 model: __
 
-m4 <- lm( pf_expression_control ~ ef_money, data = hfi_2016)
-tidy(m4)
-glance(m4)
-ggplot(data = hfi_2016, aes(x = pf_expression_control, y = hf_score)) +
+$$ \text{hf_score} = 2.794 + 0.296 * \text{pf_expression_control} +0.318 * \text{ef_money}$$
+
+```{r,echo = FALSE, message= FALSE}
+
+plot_statistics <- data.frame(value_model = c("estimate_q10", "r_squared_q10", "estimate_q1", "r_squared_q1"),
+                              num_value = c(tidy(Q10) %>% filter(term == "pf_expression_control") %>% pull(estimate), glance(Q4) %>% pull(r.squared),
+                                            tidy(Q1) %>% filter(term == "pf_expression_control") %>% pull(estimate),  glance(Q9) %>% pull(r.squared)), 
+                              value = c("estimate", "r_squared", "estimate", "r_squared"),
+                              model = c("q10", "q10", "q1", "q1"))
+
+p1 <- ggplot(data=plot_statistics %>% filter(value == "estimate"), aes(x=model, y=num_value)) +
+              geom_bar(stat="identity") + 
+              ylab("estimate") +
+              xlab(" ")
+    
+
+p2 <- ggplot(data=plot_statistics %>% filter(value == "r_squared"), aes(x=model, y=num_value)) +
+              geom_bar(stat="identity")+
+              ylab("r_squared")+
+              xlab(" ")
+
+grid.arrange(p1,p2, nrow = 1, bottom = "model", top = "pf_expression_control comparison")
+
+```
+
+
+Through adding of ef_money to the model the performance (r.squared) decreases significantly and the effecto of pf_expression_outome on the hf_score also decreases.
+Additionally pf_expression and ef_money show a correlation. 
+Through the decrease in performance by adding a variable and the correlation we can conclude that ef_money might be a confounder between  `pf_expression_control` as exposure and `hf_score` as outcome.
+
+__11. Use a linear regression model (and scatter plot) with  `ef_money` as exposure and `pf_expression_control` as outcome, to study whether `ef_money` has an association with `pf_expression_control` as well. This might validate our finding that `ef_money` is a confounder between  `pf_expression_control` as exposure and `hf_score` as outcome from Q6. __
+
+__Q11 model: __
+
+$$ \text{pf_expression_mode} = intercept + estimate * \text{ef_money} $$
+
+```{r, aufgabe_11, message= FALSE}
+Q11 <- lm( pf_expression_control ~ ef_money, data = hfi_2016)
+```
+
+
+
+```{r,echo = FALSE, message= FALSE}
+p15 <-ggplot(data = hfi_2016, aes(y = pf_expression_control, x = ef_money)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
-m4_aug <- augment(m4)
-ggplot(data = m4_aug, aes(x = .fitted, y = .resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("Residuals")
 
-ggplot(data = m4_aug, aes(x = .resid)) +
-  geom_histogram(binwidth = 0.25) +
-  xlab("Residuals")
 
-ggplot(data = m4_aug, aes(x = .fitted, y = .std.resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  xlab("Fitted values") +
-  ylab("SD Residuals")
+grid.arrange(p15, tableGrob(tidy(Q11)),layout_matrix = rbind(c(1),c(1), c(1), c(2)))
 ```
 
 
+__Q11 model: __
 
+$$ \text{pf_expression_mode} = -0.195 + 0.368 * \text{ef_money} $$
+Since the effect of ef_money on pf_expression is significant (around 0.63 per pf_expression_control unit) the ef_money is a confounder between  `pf_expression_control` as exposure and `hf_score` as outcome.
 
 
 
